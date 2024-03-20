@@ -1,8 +1,13 @@
 import { ChangeEvent, useState } from "react";
 import { socket } from "../utils/socket";
 import { sanitizeInput } from "../utils/utils";
+import { AiOutlineArrowLeft, AiOutlineArrowRight } from "react-icons/ai";
 
-export default function Join() {
+interface PropTypes {
+  setPage: (page: "home" | "multi") => void;
+}
+
+export default function Join(props: PropTypes) {
   const [room, setRoom] = useState<string>("");
   const [name, setName] = useState<string>("");
 
@@ -25,24 +30,58 @@ export default function Join() {
   }
 
   return (
-    <div>
-      <div>
-        <p>Name: </p>
-        <input value={name} onChange={handleNameInput} />
-      </div>
-      <div>
-        <p>Join a room: </p>
-        <div>
-          <input value={room} onChange={handleRoomInput} />
-          <button disabled={room.length < 4 || !name} onClick={joinRoom}>
-            Enter
-          </button>
+    <div className="join-room-page">
+      <button
+        className="mentiroso-button"
+        onClick={() => props.setPage("home")}
+      >
+        <AiOutlineArrowLeft className="button-icon" size={40} /> Back
+      </button>
+
+      <div className="join-buttons">
+        <label className="header-2" htmlFor="name">
+          Name:
+        </label>
+        <input
+          id="name"
+          className="mentiroso-input"
+          value={name}
+          onChange={handleNameInput}
+        />
+        <button
+          className="mentiroso-button"
+          style={{
+            width: "100%",
+            margin: "20px 0",
+          }}
+          disabled={!name}
+          onClick={createRoom}
+        >
+          Create Room
+        </button>
+        <div style={{ width: "100%" }}>
+          <label className="header-2" htmlFor="room">
+            Join Room:
+          </label>
+          <div className="join-room-button">
+            <input
+              className="mentiroso-input"
+              id="room"
+              value={room}
+              onChange={handleRoomInput}
+            />
+            <button
+              className="mentiroso-button"
+              style={{ minWidth: "75px" }}
+              disabled={room.length < 4 || !name}
+              onClick={joinRoom}
+              aria-label="join room"
+            >
+              <AiOutlineArrowRight size={40} className="button-icon" />
+            </button>
+          </div>
         </div>
       </div>
-      <p>or</p>
-      <button disabled={!name} onClick={createRoom}>
-        Create a room
-      </button>
     </div>
   );
 }

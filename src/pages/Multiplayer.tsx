@@ -1,17 +1,26 @@
 import { useEffect, useState } from "react";
 import { socket } from "../utils/socket";
 import Lobby from "../components/Lobby";
-import { Player, RoomState } from "../models";
+import { Bet, Player, RoomState, RoundEndInfo } from "../models";
 import Join from "../components/Join";
 import Game from "../components/Game";
+import * as Toast from "@radix-ui/react-toast";
 
-export default function Multiplayer() {
+interface PropTypes {
+  setPage: (page: "home" | "multi") => void;
+}
+
+export default function Multiplayer(props: PropTypes) {
   const [room, setRoom] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [dice, setDice] = useState<number[]>([]);
+  const [bets, setBets] = useState<Bet[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [activePlayer, setActivePlayer] = useState<string>("");
   const [roomState, setRoomState] = useState<RoomState>("join");
+  const [roundEndInfo, setRoundEndInfo] = useState<RoundEndInfo | undefined>();
+  const [errorToastOpen, setErrorToastOpen] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
   //Connect socket, register socket event listeners
   useEffect(() => {
@@ -19,6 +28,7 @@ export default function Multiplayer() {
     socket.connect();
 
     function updateRoom(serverRoom: string) {
+      console.log("updating room: ", serverRoom);
       setRoom(serverRoom);
     }
 
@@ -28,6 +38,10 @@ export default function Multiplayer() {
 
     function updateDice(serverDice: number[]) {
       setDice(serverDice);
+    }
+
+    function updateBets(serverBets: Bet[]) {
+      setBets(serverBets);
     }
 
     function updatePlayers(serverPlayers: Player[]) {
@@ -42,44 +56,71 @@ export default function Multiplayer() {
       setRoomState(serverRoomState);
     }
 
+    function updateRoundEndInfo(roundEndInfo: RoundEndInfo | undefined) {
+      setRoundEndInfo(roundEndInfo);
+    }
+
+    function handleErrorMessage(serverError: string) {
+      setError(serverError);
+      setErrorToastOpen(true);
+    }
+
     socket.on("update room", updateRoom);
     socket.on("update name", updateName);
     socket.on("update dice", updateDice);
+    socket.on("update bets", updateBets);
     socket.on("update players", updatePlayers);
     socket.on("update active player", updateActivePlayer);
     socket.on("update room state", updateRoomState);
+    socket.on("update winner", updateRoundEndInfo);
+    socket.on("error message", handleErrorMessage);
 
     return () => {
       socket.off("update room", updateRoom);
       socket.off("update name", updateName);
       socket.off("update dice", updateDice);
+      socket.off("update bets", updateBets);
       socket.off("update players", updatePlayers);
       socket.off("update active player", updateActivePlayer);
       socket.off("update room state", updateRoomState);
+      socket.off("error message", handleErrorMessage);
 
       socket.disconnect();
     };
   }, []);
 
-  if (roomState === "join") {
-    return <Join />;
-  } else if (roomState === "lobby") {
-    return (
-      <Lobby
-        room={room}
-        name={name}
-        players={players.map((player) => player.name)}
-        leave={() => setRoomState("join")}
-      />
-    );
-  } else {
-    return (
-      <Game
-        dice={dice}
-        name={name}
-        players={players}
-        activePlayer={activePlayer}
-      />
-    );
-  }
+  return (
+    <Toast.Provider swipeDirection="right">
+      {(() => {
+        if (roomState === "join") {
+          return <Join setPage={props.setPage} />;
+        } else if (roomState === "lobby") {
+          return (
+            <Lobby
+              room={room}
+              name={name}
+              players={players.map((player) => player.name)}
+            />
+          );
+        } else {
+          return (
+            <Game
+              name={name}
+              room={room}
+              dice={dice}
+              bets={bets}
+              players={players}
+              activePlayer={activePlayer}
+              roundEndInfo={roundEndInfo}
+            />
+          );
+        }
+      })()}
+      <Toast.Root open={errorToastOpen} onOpenChange={setErrorToastOpen}>
+        <Toast.Title>{error}</Toast.Title>
+        <Toast.Close />
+      </Toast.Root>
+      <Toast.Viewport />
+    </Toast.Provider>
+  );
 }
